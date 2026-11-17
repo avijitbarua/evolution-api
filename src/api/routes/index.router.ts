@@ -5,7 +5,7 @@ import { ChannelRouter } from '@api/integrations/channel/channel.router';
 import { ChatbotRouter } from '@api/integrations/chatbot/chatbot.router';
 import { EventRouter } from '@api/integrations/event/event.router';
 import { StorageRouter } from '@api/integrations/storage/storage.router';
-import { waMonitor } from '@api/server.module';
+import { cache, prismaRepository, waMonitor } from '@api/server.module';
 import { configService, Database, Facebook } from '@config/env.config';
 import { fetchLatestWaWebVersion } from '@utils/fetchLatestWaWebVersion';
 import { NextFunction, Request, Response, Router } from 'express';
@@ -194,6 +194,28 @@ router
   .use((req, res, next) => telemetry.collectTelemetry(req, res, next))
 
   .get('/', async (req, res) => {
+    let databaseStatus = 'DISCONNECTED';
+    try {
+      await prismaRepository.$queryRaw`SELECT 1`;
+      databaseStatus = 'CONNECTED';
+    } catch {
+      databaseStatus = 'ERROR';
+    }
+
+    const redisConfig = configService.get<any>('CACHE')?.REDIS;
+    let redisStatus = 'DISABLED';
+    if (redisConfig?.ENABLED) {
+      try {
+        await cache.get('health_check');
+        redisStatus = 'CONNECTED';
+      } catch {
+        redisStatus = 'ERROR';
+      }
+    }
+
+    const rabbitmqConfig = configService.get<any>('RABBITMQ');
+    const s3Config = configService.get<any>('S3');
+
     res.status(HttpStatus.OK).json({
       status: HttpStatus.OK,
       message: 'Welcome to the Evolution API, it is working!',
@@ -202,6 +224,22 @@ router
       manager: !serverConfig.DISABLE_MANAGER ? `${req.protocol}://${req.get('host')}/manager` : undefined,
       documentation: `https://doc.evolution-api.com`,
       whatsappWebVersion: (await fetchLatestWaWebVersion({})).version.join('.'),
+      connections: {
+        database: {
+          provider: databaseConfig.PROVIDER,
+          status: databaseStatus,
+        },
+        redis: {
+          enabled: redisConfig?.ENABLED || false,
+          status: redisStatus,
+        },
+        rabbitmq: {
+          enabled: rabbitmqConfig?.ENABLED || false,
+        },
+        s3: {
+          enabled: s3Config?.ENABLED || false,
+        },
+      },
     });
   })
   .post('/verify-creds', authGuard['apikey'], async (req, res) => {
