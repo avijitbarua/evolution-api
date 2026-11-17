@@ -1355,7 +1355,23 @@ export class BaileysStartupService extends ChannelStartupService {
           if (this.configService.get<Database>('DATABASE').SAVE_DATA.NEW_MESSAGE) {
             // eslint-disable-next-line @typescript-eslint/no-unused-vars
             const { pollUpdates, ...messageData } = messageRaw;
-            const msg = await this.prismaRepository.message.create({ data: messageData });
+
+            const existingMessage = await this.prismaRepository.message.findFirst({
+              where: {
+                instanceId: this.instanceId,
+                key: { path: ['id'], equals: received.key.id },
+              },
+            });
+
+            let msg: any;
+            if (existingMessage) {
+              msg = await this.prismaRepository.message.update({
+                where: { id: existingMessage.id },
+                data: messageData,
+              });
+            } else {
+              msg = await this.prismaRepository.message.create({ data: messageData });
+            }
 
             const { remoteJid } = received.key;
             const timestamp = msg.messageTimestamp;
@@ -1696,6 +1712,13 @@ export class BaileysStartupService extends ChannelStartupService {
                   `Update readed messages duplicated ignored in message.update [avoid deadlock]: ${messageKey}`,
                 );
               }
+            }
+          }
+
+          if (message.remoteJid?.includes('@lid')) {
+            const altJid = (key as any)?.remoteJidAlt || (findMessage?.key as any)?.remoteJidAlt;
+            if (altJid) {
+              message.remoteJid = altJid;
             }
           }
 
@@ -2456,7 +2479,22 @@ export class BaileysStartupService extends ChannelStartupService {
       }
 
       if (this.configService.get<Database>('DATABASE').SAVE_DATA.NEW_MESSAGE) {
-        const msg = await this.prismaRepository.message.create({ data: messageRaw });
+        const existingMessage = await this.prismaRepository.message.findFirst({
+          where: {
+            instanceId: this.instanceId,
+            key: { path: ['id'], equals: messageRaw.key.id },
+          },
+        });
+
+        let msg: any;
+        if (existingMessage) {
+          msg = await this.prismaRepository.message.update({
+            where: { id: existingMessage.id },
+            data: messageRaw,
+          });
+        } else {
+          msg = await this.prismaRepository.message.create({ data: messageRaw });
+        }
 
         if (isMedia && this.configService.get<S3>('S3').ENABLE) {
           try {
@@ -2541,6 +2579,14 @@ export class BaileysStartupService extends ChannelStartupService {
       }
 
       this.logger.verbose(messageSent);
+
+      if (messageRaw.key.remoteJid?.includes('@lid')) {
+        if (messageRaw.key.remoteJidAlt) {
+          messageRaw.key.remoteJid = messageRaw.key.remoteJidAlt;
+        } else if (sender && !sender.includes('@lid') && !isJidGroup(sender)) {
+          messageRaw.key.remoteJid = sender;
+        }
+      }
 
       this.sendDataWebhook(Events.SEND_MESSAGE, messageRaw);
 

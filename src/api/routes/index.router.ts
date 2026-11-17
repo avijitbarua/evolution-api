@@ -215,6 +215,7 @@ router
 
     const rabbitmqConfig = configService.get<any>('RABBITMQ');
     const s3Config = configService.get<any>('S3');
+    const websocketConfig = configService.get<any>('WEBSOCKET');
 
     res.status(HttpStatus.OK).json({
       status: HttpStatus.OK,
@@ -238,6 +239,10 @@ router
         },
         s3: {
           enabled: s3Config?.ENABLED || false,
+        },
+        websocket: {
+          enabled: websocketConfig?.ENABLED || false,
+          globalEvents: websocketConfig?.GLOBAL_EVENTS || false,
         },
       },
     });
