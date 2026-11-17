@@ -5040,6 +5040,7 @@ export class BaileysStartupService extends ChannelStartupService {
           {
             OR: [
               keyFilters?.remoteJid ? { key: { path: ['remoteJid'], equals: keyFilters?.remoteJid } } : {},
+              keyFilters?.remoteJid ? { key: { path: ['remoteJidAlt'], equals: keyFilters?.remoteJid } } : {},
               keyFilters?.remoteJidAlt ? { key: { path: ['remoteJidAlt'], equals: keyFilters?.remoteJidAlt } } : {},
             ],
           },
@@ -5069,6 +5070,7 @@ export class BaileysStartupService extends ChannelStartupService {
           {
             OR: [
               keyFilters?.remoteJid ? { key: { path: ['remoteJid'], equals: keyFilters?.remoteJid } } : {},
+              keyFilters?.remoteJid ? { key: { path: ['remoteJidAlt'], equals: keyFilters?.remoteJid } } : {},
               keyFilters?.remoteJidAlt ? { key: { path: ['remoteJidAlt'], equals: keyFilters?.remoteJidAlt } } : {},
             ],
           },
