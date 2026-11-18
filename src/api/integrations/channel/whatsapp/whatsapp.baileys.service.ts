@@ -3735,7 +3735,11 @@ export class BaileysStartupService extends ChannelStartupService {
   }
 
   public async getLastMessage(number: string) {
-    const where: any = { key: { remoteJid: number }, instanceId: this.instance.id };
+    const isPostgres = this.configService.get<Database>('DATABASE')?.PROVIDER === 'postgresql';
+    const where: any = {
+      instanceId: this.instance.id,
+      key: isPostgres ? { path: ['remoteJid'], equals: number } : { string_contains: number },
+    };
 
     const messages = await this.prismaRepository.message.findMany({
       where,
