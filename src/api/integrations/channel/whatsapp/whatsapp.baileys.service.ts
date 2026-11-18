@@ -782,7 +782,15 @@ export class BaileysStartupService extends ChannelStartupService {
       >[],
     ) => {
       const chatsRaw = chats.map((chat) => {
-        return { remoteJid: chat.id, instanceId: this.instanceId };
+        const anyChat = chat as any;
+        return {
+          remoteJid: chat.id,
+          instanceId: this.instanceId,
+          archive: anyChat.archive ?? anyChat.archived ?? undefined,
+          pinned: anyChat.pinned ?? undefined,
+          mute: anyChat.mute ?? undefined,
+          unreadCount: anyChat.unreadCount ?? undefined,
+        };
       });
 
       this.sendDataWebhook(Events.CHATS_UPDATE, chatsRaw);
